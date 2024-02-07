@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Document</title>
+  <style>
+    .box {
+      background-color: skyblue;
+      display: inline-block;
+    }
+    span {
+      background-color: aquamarine;
+    }
+  </style>
+</head>
+<body>
+  <div class="box box1">hello <span>world</span></div>
+  <div class="box box2">hello <span>world</span></div>
+  <script>
+    const box = document.querySelector('.box1')
+    document.addEventListener('click', (e) => {
+      console.log(e.target)
+      let target = e.target
+      if (target != box && !box.contains(target)) {
+        alert('你点的其他区域')
+      }
+    })
+  </script>
+</body>
+</html>
