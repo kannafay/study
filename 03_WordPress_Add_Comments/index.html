@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>WordPress评论神器</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      background-color: #f5f5f5;
+    }
+    .container {
+      width: 600px;
+      margin: 50px auto;
+    }
+    h2 {
+      text-align: center;
+      margin-bottom: 20px;
+    }  
+    .website {
+      margin-bottom: 20px;
+    }
+    .website #website {
+      width: 100%;
+      margin: 0;
+      padding-right: 90px;
+    }
+    .website-box {
+      position: relative;
+      margin-top: 10px;
+    }
+    .website span {
+      display: block;
+      position: absolute;
+      right: 5px;
+      top: 50%;
+      transform: translateY(-50%);
+      cursor: pointer;
+      background-color: #f2f2f2;
+      color: #333;
+      font-size: 14px;
+      padding: 5px 10px;
+      border-radius: 4px;
+      user-select: none;
+      transition: background-color .3s, color .3s;
+    }
+    .website span:hover {
+      background-color: #333;
+      color: #fff;
+    }
+    .website .check-content {
+      height: 525px;
+      display: none;
+      position: absolute;
+      left: 0;
+      top: 50px;
+      width: 100%;
+      background-color: #fff;
+      padding: 10px;
+      font-size: 15px;
+      border-radius: 6px;
+    }
+    .website.active .check-content {
+      display: block;
+      overflow: auto;
+    }
+    textarea {
+      width: 100%;
+      height: 200px;
+      transition: border .3s, box-shadow .3s;
+    }
+    input {
+      transition: border .3s, box-shadow .3s;
+    }
+    input, textarea {
+      font-size: 14px;
+      font-family: 'PingFang SC', sans-serif;
+      outline: none;
+      border: 1px solid #fff;
+      border-radius: 6px;
+      margin-top: 10px;
+      padding: 10px;
+      background-color: #fff;
+    }
+    input:not(:last-child):focus, textarea:focus {
+      box-shadow: 0 0 5px rgba(51 51 51 / .3);
+      border: 1px solid #333;
+    }
+    #author, #email, #url {
+      width: 100%;
+      margin-bottom: 10px;
+    }
+    .info {
+      margin-top: 10px;
+    }
+    #submit {
+      width: 100%;
+      text-align: center;
+      background-color: #333;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+      transition: background-color .3s;
+    }
+    #submit:active {
+      background-color: #555;
+    }
+    ul * {
+      font-size: 14px;
+    }
+    ul p {
+      margin-top: 5px;
+    }
+    li {
+      list-style: none;
+      user-select: none;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    label {
+      cursor: pointer;
+    }
+    label:hover {
+      color: #333;
+    }
+
+    @media screen and (max-width: 600px) {
+      .container {
+        width: 100%;
+        padding: 0 10px;
+        margin: 30px 0;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>发表评论</h2>
+    <div class="website">
+      博客地址：
+      <div class="website-box">
+        <input id="website" type="url" value="" placeholder="http// 或 https://">
+        <span id="check" onclick="checkPost()">检索文章</span>
+        <div class="check-content">
+          <h4>检索结果：</h4>
+          <ul>
+            <p>请输入博客地址以检索文章！</p>
+          </ul>
+        </div>
+      </div>
+    </div>
+    <form>
+      内容：<textarea id="comment" name="comment" placeholder="您好，这是一条评论。若需要审核、编辑或删除评论，请访问仪表盘的评论界面。评论者头像来自 Gravatar。"></textarea>
+      <div class="info">
+        昵称：<input id="author" name="author" type="text" value="" placeholder="一位WordPress评论者"><br>
+        邮箱：<input id="email" name="email" type="email" value="" placeholder="wapuu@wordpress.example"><br>
+        网址：<input id="url" name="url" type="url" value="" placeholder="https://cn.wordpress.org"><br>
+        <input id="post_id" type="hidden" name="comment_post_ID" value="6"><br>
+        <input id="submit" name="submit" type="submit" value="发表评论">
+      </div>
+    </form>
+  </div>
+
+  <script>
+    /**
+     * 警告：仅供学习交流使用，请勿用于非法用途！
+     * 出现302表示评论成功
+     * 出现409表示重复评论
+     * 出现429表示评论频率过快
+     * 出现403表示评论被拦截
+     * **/
+    const website_input = document.querySelector('#website')
+    website_input.addEventListener('focus', function() {
+      const website = document.querySelector('.website')
+      website.classList.add('active')
+    })
+
+    
+    let selectedPosts = []
+    function checkPost() {
+      selectedPosts = []
+
+      const website = document.querySelector('.website')
+      website.classList.add('active')
+
+      const check_content = document.querySelector('.check-content ul')
+      check_content.innerHTML = '<p>博客文章检索中...</p>'
+
+      const website_url = document.querySelector('#website').value
+      if (!website_url) {
+        check_content.innerHTML = '<p>请输入博客地址以检索文章！</p>'
+        return
+      }
+      fetch(website_url + '/wp-json/wp/v2/posts?page=1&per_page=100')
+      .then(res => res.json())
+      .then(data => {
+        check_content.innerHTML = ''
+        data.forEach(item => {
+          check_content.innerHTML += `<li><label for="${item.id}"><input type="checkbox" id="${item.id}">（ID:${item.id}）${item.title.rendered}</label></li>`
+        })
+        const post_list = document.querySelectorAll('.check-content ul li')
+        
+        post_list.forEach(checkbox => {
+          checkbox.querySelector('input[type="checkbox"]').addEventListener('change', function() {
+            if (this.checked) {
+              selectedPosts.push(this.id)
+            } else {
+              selectedPosts = selectedPosts.filter(id => id !== this.id)
+            }
+            // console.log(selectedPosts)
+          })
+        })
+      })
+      .catch(err => {
+        check_content.innerHTML = '<p>检索失败</p>'
+      })
+    }
+
+    const form = document.querySelector('form')
+    form.addEventListener('submit', function(e) {
+      e.preventDefault()
+
+      if (selectedPosts.length === 0) {
+        alert('请选择文章！')
+        return
+      }
+
+      const website_url = document.querySelector('#website').value
+      
+      let comment = document.querySelector('#comment')
+      comment = comment.value ? comment.value : comment.placeholder
+      
+      let author = document.querySelector('#author')
+      author = author.value ? author.value : author.placeholder
+      
+      let email = document.querySelector('#email')
+      email = email.value ? email.value : email.placeholder
+
+      let url = document.querySelector('#url')
+      url = url.value ? url.value : url.placeholder
+
+      const formData = new FormData(this)
+
+      formData.set('comment', comment)
+      formData.set('author', author)
+      formData.set('email', email)
+      formData.set('url', url)
+
+      selectedPosts.forEach(post_id => {
+        formData.set('comment_post_ID', post_id)
+        fetch(website_url + '/wp-comments-post.php', {
+          method: 'POST',
+          body: formData,
+          mode: 'no-cors'
+        })
+      })
+    })
+
+    document.addEventListener('click', function(e) {
+      const website = document.querySelector('.website')
+      const website_box = document.querySelector('.website-box')
+      if (!website_box.contains(e.target) && website.classList.contains('active')) {
+        website.classList.remove('active')
+      }
+    })
+  </script>
+</body>
+</html>
